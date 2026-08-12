@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ナンバーズ4 統計分析ラボ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0e1a; --bg2:#0d1220;
+  --panel:#111830; --panel2:#0e1526;
+  --border:#232f4d; --border-soft:#1a2340;
+  --ink:#e7ecf7; --ink-dim:#8b97b8; --ink-faint:#5a6588;
+  --accent:#2dd4bf; --accent-dim:#1a4d47;
+  --amber:#f0b429; --amber-dim:#4d3d14;
+  --rose:#fb7185; --rose-dim:#4d2028;
+  --blue:#5b8def;
+  --mono:'JetBrains Mono',ui-monospace,'SF Mono',monospace;
+  --sans:'Zen Kaku Gothic New','Noto Sans JP',system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.6}
+.container{max-width:1180px;margin:auto;padding:28px 20px 60px}
+.hero{position:relative;background:linear-gradient(160deg,#0f1730 0%,#0a1024 60%,#0a0e1a 100%);border:1px solid var(--border-soft);border-radius:20px;padding:36px 32px;margin-bottom:22px;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-40%;right:-10%;width:420px;height:420px;background:radial-gradient(circle,rgba(45,212,191,.14),transparent 70%);pointer-events:none}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.14em;color:var(--accent);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.eyebrow::after{content:'';width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.eyebrow::after{animation:none}}
+h1{margin:0 0 10px;font-size:30px;font-weight:900;letter-spacing:-.01em}
+.hero p{margin:0;color:var(--ink-dim);font-size:14.5px;max-width:640px}
+.period{font-family:var(--mono);font-size:12px;color:var(--ink-faint);margin-top:18px;padding-top:16px;border-top:1px solid var(--border-soft)}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px 24px;margin-bottom:16px}
+.card.highlight{border-color:var(--accent-dim);background:linear-gradient(160deg,#0f1c28,#0e1830)}
+h2{font-size:17px;margin:0 0 4px;font-weight:700;display:flex;align-items:center;gap:10px}
+h2 .num{font-family:var(--mono);font-size:12px;color:var(--accent);background:var(--accent-dim);border-radius:6px;padding:2px 8px}
+h3{font-size:13px;margin:0 0 8px;color:var(--ink-dim);font-weight:700}
+.muted{color:var(--ink-dim);font-size:12.5px;margin:6px 0 14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+textarea{width:100%;min-height:150px;border:1px solid var(--border);border-radius:10px;padding:12px;font:13px var(--mono);resize:vertical;background:var(--panel2);color:var(--ink)}
+textarea::placeholder{color:var(--ink-faint)}
+button{border:0;border-radius:9px;padding:10px 16px;font-weight:700;font-size:13px;cursor:pointer;background:var(--accent);color:#062521;margin:4px 6px 0 0;font-family:var(--sans);transition:transform .1s,opacity .15s}
+button:hover{opacity:.9}button:active{transform:scale(.98)}
+button.secondary{background:var(--panel2);color:var(--ink-dim);border:1px solid var(--border)}
+select{background:var(--panel2);color:var(--ink);border:1px solid var(--border);border-radius:8px;padding:7px 9px;font-family:var(--sans);font-size:13px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+label{font-size:12.5px;color:var(--ink-dim)}
+table{width:100%;border-collapse:collapse;font-size:12.8px;font-family:var(--mono)}
+th,td{padding:9px 8px;border-bottom:1px solid var(--border-soft);text-align:right;white-space:nowrap}
+th{background:var(--panel2);color:var(--ink-faint);font-weight:600;position:sticky;top:0;font-size:11px;letter-spacing:.03em}
+td{color:var(--ink)}
+th:first-child,td:first-child{text-align:left;font-family:var(--sans)}
+.tablewrap{overflow:auto;max-height:460px;border:1px solid var(--border-soft);border-radius:10px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--panel2);border:1px solid var(--border-soft);border-radius:12px;padding:15px}
+.kpi span{color:var(--ink-faint);font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.05em}
+.kpi b{font-size:26px;display:block;margin-top:4px;font-family:var(--mono);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{padding:6px 11px;border-radius:8px;background:var(--panel2);color:var(--ink);font-weight:600;font-family:var(--mono);font-size:12.5px;border:1px solid var(--border-soft)}
+.note{background:var(--panel2);border:1px solid var(--border-soft);border-left:3px solid var(--amber);padding:14px 16px;border-radius:10px;font-size:12.8px;color:var(--ink-dim)}
+.good{color:var(--accent)}.bad{color:var(--rose)}.flat{color:var(--ink-faint)}
+.tag{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;font-family:var(--mono)}
+.tag.hot{background:var(--rose-dim);color:var(--rose)}
+.tag.cold{background:rgba(91,141,239,.15);color:var(--blue)}
+.sigma{display:inline-block;font-family:var(--mono);font-size:10.5px;font-weight:700;padding:2px 7px;border-radius:6px;margin-left:6px}
+.sigma.s0{background:var(--accent-dim);color:var(--accent)}
+.sigma.s1{background:var(--amber-dim);color:var(--amber)}
+.sigma.s2{background:var(--rose-dim);color:var(--rose)}
+canvas{width:100%;border-radius:10px;background:var(--panel2);border:1px solid var(--border-soft)}
+.section-lead{font-size:12.8px;color:var(--ink-dim);margin:0 0 16px;line-height:1.7}
+.hotcold-cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:640px){.hotcold-cols{grid-template-columns:1fr}}
+.stat-row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border-soft);font-size:13px}
+.stat-row:last-child{border-bottom:none}
+.stat-row b{font-family:var(--mono)}
+.candidate-hero-table td:first-child{font-family:var(--mono);font-weight:700}
+.candidate-big{font-family:var(--mono);font-size:19px;font-weight:700;letter-spacing:.05em;color:var(--accent)}
+@media(max-width:600px){.container{padding:16px 12px}h1{font-size:23px}.card{padding:18px 16px}}
+</style>
+</head>
+<body>
+<div class="container">
+
+<section class="hero">
+<div class="eyebrow">STATISTICAL ANALYSIS / NOT A PREDICTION ENGINE</div>
+<h1>ナンバーズ4 統計分析ラボ</h1>
+<p>過去データの頻度・トレンド・分布を数値で可視化し、「揺れ（ノイズ）」と「本当の偏り」を区別するための分析ツールです。標準偏差やカイ二乗検定で、見た目の勢いが統計的に意味を持つかどうかを確認します。</p>
+<div class="period" id="periodInfo"></div>
+</section>
+
+<section class="card">
+<h2><span class="num">DATA</span>データ入力</h2>
+<p class="muted">初期状態では、みずほ銀行公式CSV（第6532回〜第7047回・516回分）を読み込んでいます。別のデータで試したい場合は下に貼り替えて「分析する」を押してください。1行1回分、古い→新しい順を推奨します。</p>
+<textarea id="data" placeholder="例：
+1234
+5087
+7712
+0398
+..."></textarea>
+<div class="row">
+<label>データ順　
+<select id="orderMode">
+<option value="as-is" selected>入力順をそのまま使う（古い→新しい）</option>
+<option value="reverse">入力順を反転して使う（新しい→古い で貼った場合）</option>
+</select>
+</label>
+<button onclick="analyze()">分析する</button>
+<button class="secondary" onclick="loadEmbedded()">公式データに戻す</button>
+<button class="secondary" onclick="clearAll()">クリア</button>
+</div>
+<div id="status" class="muted" style="margin-top:8px"></div>
+</section>
+
+<div id="results" style="display:none">
+
+<section class="card">
+<h2><span class="num">OVERVIEW</span>概況</h2>
+<div class="kpis" id="kpis"></div>
+</section>
+
+<section class="card highlight">
+<h2><span class="num">TOP</span>次回候補</h2>
+<p class="section-lead">
+<b style="color:var(--rose)">重要：</b>ストレート（4桁完全一致）の場合、個々の具体的な数字の理論上の当選確率は「1234」でも「1111」でも常に1/10000（0.01%）で完全に同一です。形状によって個々の数字の確率が変わるわけではありません。<br><br>
+このリストは、<b style="color:var(--accent)">候補全体の重複形状の内訳を「理論比率×形状自体の直近トレンド」で配分</b>したうえで、各配分枠の中を「桁の出現頻度・ホット/コールド・位置別トレンド・間隔の傾向・ペアの相性・奇偶/大小/合計値レンジの直近トレンド」をすべて理論値からの倍率に変換し掛け合わせた指標で並べたものです。分析項目1〜4すべての勢いが、配分（形状）と枠内の順位づけ（それ以外）の両方に反映されています。倍率1.000倍＝理論通り、それより大きい/小さいは「直近の傾向がその数字にとって追い風/向かい風」という意味の相対指標であり、<b style="color:var(--rose)">「期待値」や実際の当選確率が変わることを意味しません</b>。カイ二乗検定のみ、性質上この配分に使っていません。
+</p>
+<div class="row">
+<label>候補数 <select id="candidateN"><option>10</option><option selected>20</option><option>50</option><option>100</option></select></label>
+<button onclick="generateCandidates()">候補を生成</button>
+</div>
+<div id="candidateQuotaInfo" class="muted" style="margin-top:8px"></div>
+<div class="tablewrap" style="margin-top:12px"><table id="candidateTable" class="candidate-hero-table"></table></div>
+</section>
+
+<section class="card">
+<h2><span class="num">1</span>桁ごとの出現頻度分析</h2>
+<p class="section-lead">千・百・十・一の位を合わせた、各数字（0〜9）の出現回数です。理論上の期待値は「回数×4÷10」、標準偏差（σ）は <span style="font-family:var(--mono)">0.6×√回数</span> 程度。差が ±1σ 以内なら統計的にはただの揺れ、±2σ を超えると珍しい部類ですが、それでも起こり得る範囲です。</p>
+<div class="tablewrap"><table id="digitTable"></table></div>
+</section>
+
+<section class="card">
+<h2><span class="num">2</span>ホット・コールドナンバー</h2>
+<p class="section-lead">直近30回でよく出ている数字・出ていない数字です。<b style="color:var(--rose)">「出ていないから次出やすい」は誤謬（ギャンブラーの誤謬）</b>であり、単なる直近の傾向確認用です。</p>
+<div class="hotcold-cols">
+<div><h3>🔥 ホット（直近30回で多い）</h3><div id="hotList" class="chips"></div></div>
+<div><h3>❄️ コールド（直近30回で少ない・空き長い）</h3><div id="coldList" class="chips"></div></div>
+</div>
+</section>
+
+<section class="card">
+<h2><span class="num">TREND</span>出現トレンド</h2>
+<canvas id="trendChart" width="1100" height="280"></canvas>
+</section>
+
+<section class="card">
+<h2><span class="num">POS</span>桁別分析</h2>
+<div class="tablewrap"><table id="posTable"></table></div>
+</section>
+
+<section class="card">
+<h2><span class="num">COMBO</span>組み合わせ分析</h2>
+<div class="grid">
+<div><h3>強いペア</h3><div id="pairs" class="chips"></div></div>
+<div><h3>前回から残る数字</h3><div id="carry" class="chips"></div></div>
+<div><h3>±1でつながる数字</h3><div id="adjacent" class="chips"></div></div>
+</div>
+</section>
+
+<section class="card">
+<h2><span class="num">3</span>重複形状（理論値との比較）</h2>
+<p class="section-lead">4桁の「同じ数字の重なり方」です。理論値は組み合わせ論から計算した厳密な確率（例：オール異数字＝50.40%）。実測がそこから大きく外れていなければ、機械のランダム性は健全と言えます。</p>
+<div class="tablewrap"><table id="patternTable"></table></div>
+</section>
+
+<section class="card">
+<h2><span class="num">3</span>数字合計の分布</h2>
+<p class="section-lead">4桁の合計（0〜36）は、サイコロを4個振るのと同じ理屈で中央（18付近）が最も出やすい「山型」に近づくのが理論値です。</p>
+<div class="kpis" id="sumKpis" style="margin-bottom:14px"></div>
+<canvas id="sumChart" width="1100" height="220"></canvas>
+</section>
+
+<section class="card">
+<h2><span class="num">3</span>合計値レンジの勢い分析</h2>
+<p class="section-lead">合計値を理論確率がほぼ均等になるよう5つのレンジに分け、直近の出現傾向を見ます。</p>
+<div class="tablewrap"><table id="sumBucketMomentumTable"></table></div>
+</section>
+
+<section class="card">
+<h2><span class="num">3</span>奇偶バランス（理論値・勢い）</h2>
+<p class="section-lead">各パターンの理論値は二項分布（偶数になる確率1/2）で厳密に計算できます：2偶2奇=37.5%、1偶3奇/3偶1奇=各25%、4偶0奇/0偶4奇=各6.25%。</p>
+<div class="tablewrap"><table id="parityMomentumTable"></table></div>
+</section>
+
+<section class="card">
+<h2><span class="num">3</span>大小バランス（5以上/5未満）</h2>
+<p class="section-lead">0〜4を「小」、5〜9を「大」として、奇偶と同じ二項分布（理論値は奇偶バランスと同一）で見ます。</p>
+<div class="tablewrap"><table id="hilowMomentumTable"></table></div>
+</section>
+
+<section class="card">
+<h2><span class="num">4</span>間隔（ギャップ）分析</h2>
+<p class="section-lead">各数字が「平均何回おきに」出ているか、そして「今何回出ていないか」の一覧です。4桁のどこかにその数字が含まれる確率は1-0.9⁴≈34.4%なので、理論上の平均間隔は約2.91回。あくまで確認用で、間隔が空いているからといって次に出やすくなるわけではありません（候補算出には「直近間隔の傾向」を小さな重みで反映しています）。</p>
+<div class="tablewrap"><table id="gapTable"></table></div>
+</section>
+
+<section class="card">
+<h2><span class="num">5</span>カイ二乗検定（機械の偏りチェック）</h2>
+<p class="section-lead">「0〜9が本当に均等に出ているか」を統計的に検定します。全期間と直近100回の両方を計算し、偏りの傾向が変化していないかも見ます。抽選機は定期的に整備・交換されるため、長期的な偏りは基本的に検出されない設計です。</p>
+<div class="grid3" id="chiSquareBoxes"></div>
+</section>
+
+<section class="card">
+<h2><span class="num">BT</span>簡易バックテスト</h2>
+<p class="muted">各時点で「それ以前の最大100回」を学習し、次の1回を候補として出す方式。データが100回あれば、直近50回を検証できます。完全な統計検定ではなく、ルール比較用です。</p>
+<div class="row">
+<label>候補数 <select id="btN"><option>5</option><option selected>10</option><option>20</option><option>50</option></select></label>
+<button onclick="backtest()">バックテスト</button>
+</div>
+<div id="btResult" style="margin-top:12px"></div>
+</section>
+
+<section class="card note">
+<strong>注意：</strong> ナンバーズ4は抽選結果がランダムに決まる独立試行です。過去の出現頻度・トレンド・「勢い」は、次回の当選確率には影響しません（各数字・各パターンの理論上の出現確率は常に一定です）。このツールは統計的な傾向を可視化し、見た目の勢いが単なるノイズか統計的に珍しい事象かを確認するための分析・仮説検証用であり、当選を保証するものではありません。
+</section>
+</div>
+</div>
+
+<script>
+const EMBEDDED_DRAWS=["9533","4167","1770","3966","1799","2057","0358","8412","4618","1604","7237","2390","6008","1491","9909","0205","9141","7828","1910","7889","5705","5740","4835","1130","7056","3232","4601","3848","2796","6411","2095","5794","3119","4488","5225","5211","0605","9563","9299","0784","5812","8903","1319","0946","5126","3661","5667","8407","2004","8921","9546","7178","5665","4428","7675","2405","1995","1133","4059","5709","4412","2667","7143","0313","8888","3369","0206","3005","3952","3631","5730","1088","7649","3340","2532","7220","5653","8963","4640","3212","3920","1978","0000","8253","8939","2617","4259","6217","9105","6199","3424","0596","3498","5214","0580","5892","5231","0474","4119","4386","9983","0685","3754","1786","5802","1599","8583","0135","1366","2324","9774","4409","8259","6385","5420","2315","7240","0893","9590","5400","1596","0235","4827","2317","0853","3881","0859","8942","3343","1946","3273","6744","0385","9265","1890","6398","3026","9378","0664","3839","4968","1170","6318","8194","1781","0948","8256","8261","9200","0384","2853","7006","9843","1087","8555","1431","0488","2191","8397","0745","6185","8221","3671","1695","7892","9721","2078","4417","4013","7856","7011","1820","2166","7555","8842","4811","7834","6697","7059","9686","4071","1670","3449","5323","8968","2948","8391","0081","1952","8156","1883","8892","9565","1898","4368","4116","9601","6418","2762","9899","2718","9115","3697","7357","6779","7141","2839","2370","5944","9318","6563","5084","3142","3176","7666","2482","6326","0975","7592","5354","7102","4804","1351","8174","8622","2940","6757","5261","3099","1479","2452","9181","2982","5358","4790","0172","5295","5552","2037","2337","2460","7780","8714","5493","7924","5454","6710","1592","3175","0536","3497","3080","1027","4876","5835","1365","6014","2458","5541","6362","5140","9959","9288","8749","5806","9660","9463","1624","6694","0774","1929","0549","0538","4598","3376","1871","2841","5260","2679","7961","8991","6867","1314","7604","6152","8721","5808","4787","2477","7728","1540","0012","7765","5280","1916","2964","0933","7717","0220","6352","3148","6896","4706","1350","4325","5441","0100","8607","2326","8612","4591","0523","0017","4714","8726","0137","9275","9227","5282","2981","3049","6727","3403","2123","9991","3116","1184","6444","5186","4693","9741","1258","5445","3324","2803","3076","5396","6936","7263","5571","4784","3493","3123","5272","2208","2528","7221","2310","0497","5879","4944","9785","3278","3984","6333","4141","2121","7202","7526","2300","7263","1632","6551","2827","2699","2404","8060","6436","8174","9534","0615","6022","0515","0176","7964","4588","6120","9827","9945","3727","3834","5517","6403","3798","3395","7896","5004","6376","6978","0505","8440","9166","3115","2476","9508","1918","3099","2586","7626","9087","8404","2852","7592","4819","2631","6092","9420","0247","3421","2295","6449","6454","9781","3851","9577","9785","1346","4568","9107","4404","2657","9941","3698","4111","1818","0470","4970","0900","7494","4248","7323","1742","4486","9227","0168","3570","0769","8411","3003","9678","0799","8641","9391","3298","9998","5513","1595","1421","8852","9974","2169","7052","1569","1411","6356","7683","3907","5410","3526","6534","7763","5783","7402","5971","9271","5234","8389","4899","9621","1058","9258","5368","9527","2340","0642","0356","6221","3169","5073","8241","2721","5409","5441","1319","8964","5401","7201","6718","9134","8339","4699","6892","0430","7558","5765","8394","0256","3608","2535","8873","1794","4302","2535","2891","7904","7617","0564","7747","9522","0994","4570","8835","2652","7754","2109","3128"];
+const EMBEDDED_ROUNDS=["第6532回","第6533回","第6534回","第6535回","第6536回","第6537回","第6538回","第6539回","第6540回","第6541回","第6542回","第6543回","第6544回","第6545回","第6546回","第6547回","第6548回","第6549回","第6550回","第6551回","第6552回","第6553回","第6554回","第6555回","第6556回","第6557回","第6558回","第6559回","第6560回","第6561回","第6562回","第6563回","第6564回","第6565回","第6566回","第6567回","第6568回","第6569回","第6570回","第6571回","第6572回","第6573回","第6574回","第6575回","第6576回","第6577回","第6578回","第6579回","第6580回","第6581回","第6582回","第6583回","第6584回","第6585回","第6586回","第6587回","第6588回","第6589回","第6590回","第6591回","第6592回","第6593回","第6594回","第6595回","第6596回","第6597回","第6598回","第6599回","第6600回","第6601回","第6602回","第6603回","第6604回","第6605回","第6606回","第6607回","第6608回","第6609回","第6610回","第6611回","第6612回","第6613回","第6614回","第6615回","第6616回","第6617回","第6618回","第6619回","第6620回","第6621回","第6622回","第6623回","第6624回","第6625回","第6626回","第6627回","第6628回","第6629回","第6630回","第6631回","第6632回","第6633回","第6634回","第6635回","第6636回","第6637回","第6638回","第6639回","第6640回","第6641回","第6642回","第6643回","第6644回","第6645回","第6646回","第6647回","第6648回","第6649回","第6650回","第6651回","第6652回","第6653回","第6654回","第6655回","第6656回","第6657回","第6658回","第6659回","第6660回","第6661回","第6662回","第6663回","第6664回","第6665回","第6666回","第6667回","第6668回","第6669回","第6670回","第6671回","第6672回","第6673回","第6674回","第6675回","第6676回","第6677回","第6678回","第6679回","第6680回","第6681回","第6682回","第6683回","第6684回","第6685回","第6686回","第6687回","第6688回","第6689回","第6690回","第6691回","第6692回","第6693回","第6694回","第6695回","第6696回","第6697回","第6698回","第6699回","第6700回","第6701回","第6702回","第6703回","第6704回","第6705回","第6706回","第6707回","第6708回","第6709回","第6710回","第6711回","第6712回","第6713回","第6714回","第6715回","第6716回","第6717回","第6718回","第6719回","第6720回","第6721回","第6722回","第6723回","第6724回","第6725回","第6726回","第6727回","第6728回","第6729回","第6730回","第6731回","第6732回","第6733回","第6734回","第6735回","第6736回","第6737回","第6738回","第6739回","第6740回","第6741回","第6742回","第6743回","第6744回","第6745回","第6746回","第6747回","第6748回","第6749回","第6750回","第6751回","第6752回","第6753回","第6754回","第6755回","第6756回","第6757回","第6758回","第6759回","第6760回","第6761回","第6762回","第6763回","第6764回","第6765回","第6766回","第6767回","第6768回","第6769回","第6770回","第6771回","第6772回","第6773回","第6774回","第6775回","第6776回","第6777回","第6778回","第6779回","第6780回","第6781回","第6782回","第6783回","第6784回","第6785回","第6786回","第6787回","第6788回","第6789回","第6790回","第6791回","第6792回","第6793回","第6794回","第6795回","第6796回","第6797回","第6798回","第6799回","第6800回","第6801回","第6802回","第6803回","第6804回","第6805回","第6806回","第6807回","第6808回","第6809回","第6810回","第6811回","第6812回","第6813回","第6814回","第6815回","第6816回","第6817回","第6818回","第6819回","第6820回","第6821回","第6822回","第6823回","第6824回","第6825回","第6826回","第6827回","第6828回","第6829回","第6830回","第6831回","第6832回","第6833回","第6834回","第6835回","第6836回","第6837回","第6838回","第6839回","第6840回","第6841回","第6842回","第6843回","第6844回","第6845回","第6846回","第6847回","第6848回","第6849回","第6850回","第6851回","第6852回","第6853回","第6854回","第6855回","第6856回","第6857回","第6858回","第6859回","第6860回","第6861回","第6862回","第6863回","第6864回","第6865回","第6866回","第6867回","第6868回","第6869回","第6870回","第6871回","第6872回","第6873回","第6874回","第6875回","第6876回","第6877回","第6878回","第6879回","第6880回","第6881回","第6882回","第6883回","第6884回","第6885回","第6886回","第6887回","第6888回","第6889回","第6890回","第6891回","第6892回","第6893回","第6894回","第6895回","第6896回","第6897回","第6898回","第6899回","第6900回","第6901回","第6902回","第6903回","第6904回","第6905回","第6906回","第6907回","第6908回","第6909回","第6910回","第6911回","第6912回","第6913回","第6914回","第6915回","第6916回","第6917回","第6918回","第6919回","第6920回","第6921回","第6922回","第6923回","第6924回","第6925回","第6926回","第6927回","第6928回","第6929回","第6930回","第6931回","第6932回","第6933回","第6934回","第6935回","第6936回","第6937回","第6938回","第6939回","第6940回","第6941回","第6942回","第6943回","第6944回","第6945回","第6946回","第6947回","第6948回","第6949回","第6950回","第6951回","第6952回","第6953回","第6954回","第6955回","第6956回","第6957回","第6958回","第6959回","第6960回","第6961回","第6962回","第6963回","第6964回","第6965回","第6966回","第6967回","第6968回","第6969回","第6970回","第6971回","第6972回","第6973回","第6974回","第6975回","第6976回","第6977回","第6978回","第6979回","第6980回","第6981回","第6982回","第6983回","第6984回","第6985回","第6986回","第6987回","第6988回","第6989回","第6990回","第6991回","第6992回","第6993回","第6994回","第6995回","第6996回","第6997回","第6998回","第6999回","第7000回","第7001回","第7002回","第7003回","第7004回","第7005回","第7006回","第7007回","第7008回","第7009回","第7010回","第7011回","第7012回","第7013回","第7014回","第7015回","第7016回","第7017回","第7018回","第7019回","第7020回","第7021回","第7022回","第7023回","第7024回","第7025回","第7026回","第7027回","第7028回","第7029回","第7030回","第7031回","第7032回","第7033回","第7034回","第7035回","第7036回","第7037回","第7038回","第7039回","第7040回","第7041回","第7042回","第7043回","第7044回","第7045回","第7046回","第7047回"];
+const EMBEDDED_DATES=["2024/8/12","2024/8/13","2024/8/14","2024/8/15","2024/8/16","2024/8/19","2024/8/20","2024/8/21","2024/8/22","2024/8/23","2024/8/26","2024/8/27","2024/8/28","2024/8/29","2024/8/30","2024/9/2","2024/9/3","2024/9/4","2024/9/5","2024/9/6","2024/9/9","2024/9/10","2024/9/11","2024/9/12","2024/9/13","2024/9/16","2024/9/17","2024/9/18","2024/9/19","2024/9/20","2024/9/23","2024/9/24","2024/9/25","2024/9/26","2024/9/27","2024/9/30","2024/10/1","2024/10/2","2024/10/3","2024/10/4","2024/10/7","2024/10/8","2024/10/9","2024/10/10","2024/10/11","2024/10/14","2024/10/15","2024/10/16","2024/10/17","2024/10/18","2024/10/21","2024/10/22","2024/10/23","2024/10/24","2024/10/25","2024/10/28","2024/10/29","2024/10/30","2024/10/31","2024/11/1","2024/11/4","2024/11/5","2024/11/6","2024/11/7","2024/11/8","2024/11/11","2024/11/12","2024/11/13","2024/11/14","2024/11/15","2024/11/18","2024/11/19","2024/11/20","2024/11/21","2024/11/22","2024/11/25","2024/11/26","2024/11/27","2024/11/28","2024/11/29","2024/12/2","2024/12/3","2024/12/4","2024/12/5","2024/12/6","2024/12/9","2024/12/10","2024/12/11","2024/12/12","2024/12/13","2024/12/16","2024/12/17","2024/12/18","2024/12/19","2024/12/20","2024/12/23","2024/12/24","2024/12/25","2024/12/26","2024/12/27","2024/12/30","2025/1/6","2025/1/7","2025/1/8","2025/1/9","2025/1/10","2025/1/13","2025/1/14","2025/1/15","2025/1/16","2025/1/17","2025/1/20","2025/1/21","2025/1/22","2025/1/23","2025/1/24","2025/1/27","2025/1/28","2025/1/29","2025/1/30","2025/1/31","2025/2/3","2025/2/4","2025/2/5","2025/2/6","2025/2/7","2025/2/10","2025/2/11","2025/2/12","2025/2/13","2025/2/14","2025/2/17","2025/2/18","2025/2/19","2025/2/20","2025/2/21","2025/2/24","2025/2/25","2025/2/26","2025/2/27","2025/2/28","2025/3/3","2025/3/4","2025/3/5","2025/3/6","2025/3/7","2025/3/10","2025/3/11","2025/3/12","2025/3/13","2025/3/14","2025/3/17","2025/3/18","2025/3/19","2025/3/20","2025/3/21","2025/3/24","2025/3/25","2025/3/26","2025/3/27","2025/3/28","2025/3/31","2025/4/1","2025/4/2","2025/4/3","2025/4/4","2025/4/7","2025/4/8","2025/4/9","2025/4/10","2025/4/11","2025/4/14","2025/4/15","2025/4/16","2025/4/17","2025/4/18","2025/4/21","2025/4/22","2025/4/23","2025/4/24","2025/4/25","2025/4/28","2025/4/29","2025/4/30","2025/5/1","2025/5/2","2025/5/5","2025/5/6","2025/5/7","2025/5/8","2025/5/9","2025/5/12","2025/5/13","2025/5/14","2025/5/15","2025/5/16","2025/5/19","2025/5/20","2025/5/21","2025/5/22","2025/5/23","2025/5/26","2025/5/27","2025/5/28","2025/5/29","2025/5/30","2025/6/2","2025/6/3","2025/6/4","2025/6/5","2025/6/6","2025/6/9","2025/6/10","2025/6/11","2025/6/12","2025/6/13","2025/6/16","2025/6/17","2025/6/18","2025/6/19","2025/6/20","2025/6/23","2025/6/24","2025/6/25","2025/6/26","2025/6/27","2025/6/30","2025/7/1","2025/7/2","2025/7/3","2025/7/4","2025/7/7","2025/7/8","2025/7/9","2025/7/10","2025/7/11","2025/7/14","2025/7/15","2025/7/16","2025/7/17","2025/7/18","2025/7/21","2025/7/22","2025/7/23","2025/7/24","2025/7/25","2025/7/28","2025/7/29","2025/7/30","2025/7/31","2025/8/1","2025/8/4","2025/8/5","2025/8/6","2025/8/7","2025/8/8","2025/8/11","2025/8/12","2025/8/13","2025/8/14","2025/8/15","2025/8/18","2025/8/19","2025/8/20","2025/8/21","2025/8/22","2025/8/25","2025/8/26","2025/8/27","2025/8/28","2025/8/29","2025/9/1","2025/9/2","2025/9/3","2025/9/4","2025/9/5","2025/9/8","2025/9/9","2025/9/10","2025/9/11","2025/9/12","2025/9/15","2025/9/16","2025/9/17","2025/9/18","2025/9/19","2025/9/22","2025/9/23","2025/9/24","2025/9/25","2025/9/26","2025/9/29","2025/9/30","2025/10/1","2025/10/2","2025/10/3","2025/10/6","2025/10/7","2025/10/8","2025/10/9","2025/10/10","2025/10/13","2025/10/14","2025/10/15","2025/10/16","2025/10/17","2025/10/20","2025/10/21","2025/10/22","2025/10/23","2025/10/24","2025/10/27","2025/10/28","2025/10/29","2025/10/30","2025/10/31","2025/11/3","2025/11/4","2025/11/5","2025/11/6","2025/11/7","2025/11/10","2025/11/11","2025/11/12","2025/11/13","2025/11/14","2025/11/17","2025/11/18","2025/11/19","2025/11/20","2025/11/21","2025/11/24","2025/11/25","2025/11/26","2025/11/27","2025/11/28","2025/12/1","2025/12/2","2025/12/3","2025/12/4","2025/12/5","2025/12/8","2025/12/9","2025/12/10","2025/12/11","2025/12/12","2025/12/15","2025/12/16","2025/12/17","2025/12/18","2025/12/19","2025/12/22","2025/12/23","2025/12/24","2025/12/25","2025/12/26","2025/12/29","2025/12/30","2026/1/5","2026/1/6","2026/1/7","2026/1/8","2026/1/9","2026/1/12","2026/1/13","2026/1/14","2026/1/15","2026/1/16","2026/1/19","2026/1/20","2026/1/21","2026/1/22","2026/1/23","2026/1/26","2026/1/27","2026/1/28","2026/1/29","2026/1/30","2026/2/2","2026/2/3","2026/2/4","2026/2/5","2026/2/6","2026/2/9","2026/2/10","2026/2/11","2026/2/12","2026/2/13","2026/2/16","2026/2/17","2026/2/18","2026/2/19","2026/2/20","2026/2/23","2026/2/24","2026/2/25","2026/2/26","2026/2/27","2026/3/2","2026/3/3","2026/3/4","2026/3/5","2026/3/6","2026/3/9","2026/3/10","2026/3/11","2026/3/12","2026/3/13","2026/3/16","2026/3/17","2026/3/18","2026/3/19","2026/3/20","2026/3/23","2026/3/24","2026/3/25","2026/3/26","2026/3/27","2026/3/30","2026/3/31","2026/4/1","2026/4/2","2026/4/3","2026/4/6","2026/4/7","2026/4/8","2026/4/9","2026/4/10","2026/4/13","2026/4/14","2026/4/15","2026/4/16","2026/4/17","2026/4/20","2026/4/21","2026/4/22","2026/4/23","2026/4/24","2026/4/27","2026/4/28","2026/4/29","2026/4/30","2026/5/1","2026/5/4","2026/5/5","2026/5/6","2026/5/7","2026/5/8","2026/5/11","2026/5/12","2026/5/13","2026/5/14","2026/5/15","2026/5/18","2026/5/19","2026/5/20","2026/5/21","2026/5/22","2026/5/25","2026/5/26","2026/5/27","2026/5/28","2026/5/29","2026/6/1","2026/6/2","2026/6/3","2026/6/4","2026/6/5","2026/6/8","2026/6/9","2026/6/10","2026/6/11","2026/6/12","2026/6/15","2026/6/16","2026/6/17","2026/6/18","2026/6/19","2026/6/22","2026/6/23","2026/6/24","2026/6/25","2026/6/26","2026/6/29","2026/6/30","2026/7/1","2026/7/2","2026/7/3","2026/7/6","2026/7/7","2026/7/8","2026/7/9","2026/7/10","2026/7/13","2026/7/14","2026/7/15","2026/7/16","2026/7/17","2026/7/20","2026/7/21","2026/7/22","2026/7/23","2026/7/24","2026/7/27","2026/7/28","2026/7/29","2026/7/30","2026/7/31","2026/8/3","2026/8/4","2026/8/5","2026/8/6","2026/8/7","2026/8/10","2026/8/11","2026/8/12"];
+let draws=[], stats=null;
+const SHAPE_ORDER=['オール異数字','ダブル','ダブル×2','トリプル','フォーカード'];
+const THEORY_SHAPE={'オール異数字':50.40,'ダブル':43.20,'ダブル×2':2.70,'トリプル':3.60,'フォーカード':0.10};
+const PARITY_ORDER=['2偶2奇','1偶3奇','3偶1奇','4偶0奇','0偶4奇'];
+const THEORY_PARITY={'2偶2奇':37.5,'1偶3奇':25,'3偶1奇':25,'4偶0奇':6.25,'0偶4奇':6.25};
+const HILOW_ORDER=['2大2小','1大3小','3大1小','4大0小','0大4小'];
+const THEORY_HILOW={'2大2小':37.5,'1大3小':25,'3大1小':25,'4大0小':6.25,'0大4小':6.25};
+const CHI_CRIT={'10%':14.684,'5%':16.919,'1%':21.666,'0.1%':27.877};
+const THEORY_SUM=[0.0100,0.0400,0.1000,0.2000,0.3500,0.5600,0.8400,1.2000,1.6500,2.2000,2.8200,3.4800,4.1500,4.8000,5.4000,5.9200,6.3300,6.6000,6.7000,6.6000,6.3300,5.9200,5.4000,4.8000,4.1500,3.4800,2.8200,2.2000,1.6500,1.2000,0.8400,0.5600,0.3500,0.2000,0.1000,0.0400,0.0100];
+const SUM_BUCKETS=[[0,13],[14,16],[17,20],[21,23],[24,36]];
+const SUM_BUCKET_LABELS=SUM_BUCKETS.map(b=>`${b[0]}-${b[1]}`);
+const THEORY_SUMBUCKET={};
+SUM_BUCKETS.forEach((b,i)=>{let p=0;for(let s=b[0];s<=b[1];s++)p+=THEORY_SUM[s];THEORY_SUMBUCKET[SUM_BUCKET_LABELS[i]]=p;});
+
+function parseData(){
+ const text=document.getElementById('data').value.trim();
+ const lines=text.split(/\n+/).map(x=>x.trim()).filter(Boolean);
+ const found=[];
+ for(const line of lines){
+   const m=line.match(/(?<!\d)\d{1,4}(?!\d)/g);
+   if(m) m.forEach(v=>found.push(v.padStart(4,'0')));
+ }
+ const mode=document.getElementById('orderMode')?.value || 'as-is';
+ return mode==='reverse' ? found.reverse() : found;
+}
+function analyze(){
+ draws=parseData();
+ if(draws.length<10){alert('4桁の数字を10回以上入力してください。');return}
+ if(draws.length>1000) draws=draws.slice(-1000);
+ stats=makeStats(draws);
+ document.getElementById('results').style.display='block';
+ renderAll();
+ document.getElementById('status').textContent=`${draws.length}回分を読み込みました。3桁以下は先頭に0を補完済みです。配列の末尾（最後の行）を「最新の抽せん」として分析しています。`;
+}
+function shapeName(s){const c=Object.values([...s].reduce((o,x)=>(o[x]=(o[x]||0)+1,o),{})).sort((a,b)=>b-a).join('-');return {'1-1-1-1':'オール異数字','2-1-1':'ダブル','2-2':'ダブル×2','3-1':'トリプル','4':'フォーカード'}[c]||c}
+function parityLabel(s){const evens=[...s].filter(c=>+c%2===0).length;return `${evens}偶${4-evens}奇`}
+function hilowLabel(s){const high=[...s].filter(c=>+c>=5).length;return `${high}大${4-high}小`}
+function sumOf(s){return [...s].reduce((a,c)=>a+ +c,0)}
+function sumBucketLabel(s){const v=sumOf(s);for(let i=0;i<SUM_BUCKETS.length;i++){if(v>=SUM_BUCKETS[i][0]&&v<=SUM_BUCKETS[i][1])return SUM_BUCKET_LABELS[i]}return SUM_BUCKET_LABELS[SUM_BUCKET_LABELS.length-1]}
+
+function makeStats(a){
+ const n=a.length, digits=Array.from({length:10},(_,d)=>({d,count:0,last:-1,gaps:[],recent10:0,recent20:0,recent30:0,recent50:0,blocks:[0,0,0,0,0],pos:[0,0,0,0],posRecent30:[0,0,0,0]}));
+ a.forEach((s,i)=>{
+   [...s].forEach((c,p)=>{const d=+c;digits[d].count++;digits[d].pos[p]++; if(i>=n-30)digits[d].posRecent30[p]++;});
+ });
+ for(let d=0;d<10;d++){
+   const idx=[]; a.forEach((s,i)=>{if(s.includes(String(d))) idx.push(i)});
+   if(idx.length){digits[d].last=n-1-idx[idx.length-1];}
+   for(let k=1;k<idx.length;k++) digits[d].gaps.push(idx[k]-idx[k-1]);
+   for(let j=0;j<Math.min(10,n);j++) if(a[n-1-j].includes(String(d))) digits[d].recent10++;
+   for(let j=0;j<Math.min(20,n);j++) if(a[n-1-j].includes(String(d))) digits[d].recent20++;
+   for(let j=0;j<Math.min(30,n);j++) if(a[n-1-j].includes(String(d))) digits[d].recent30++;
+   for(let j=0;j<Math.min(50,n);j++) if(a[n-1-j].includes(String(d))) digits[d].recent50++;
+   for(let b=0;b<5;b++){const end=n-b*Math.ceil(n/5), start=Math.max(0,end-Math.ceil(n/5)); for(let i=start;i<end;i++) if(a[i].includes(String(d))) digits[d].blocks[4-b]++;}
+ }
+ const pairMom=pairMomentum(a);
+ const posRate=digits.map(x=>x.pos.map(v=>v/n));
+ const w30=Math.min(30,n), olderN=Math.max(1,n-w30);
+ const maxCount=Math.max(...digits.map(x=>x.count));
+ digits.forEach(x=>{
+   const freq=x.count/(n*4);
+   const r10=x.recent10/(Math.min(10,n)*4);
+   const r30=x.recent30/(Math.min(30,n)*4);
+   const older=Math.max(0,(x.count-x.recent30)/(Math.max(1,n-30)*4));
+   const trend=(r30-older)*100;
+   const avg=x.gaps.length?x.gaps.reduce((a,b)=>a+b,0)/x.gaps.length:null;
+   const maxGap=x.gaps.length?Math.max(...x.gaps):null;
+   const gap=x.last+1;
+   const gapScore=avg?Math.min(1,gap/(avg*2)):0;
+   const posMax=Math.max(...x.pos)/n;
+   // 間隔の直近傾向：直近3回分の間隔平均 vs 全期間平均間隔
+   const recentGaps=x.gaps.slice(-3);
+   const recentGapAvg=recentGaps.length?recentGaps.reduce((a,b)=>a+b,0)/recentGaps.length:null;
+   const gapTrend=(avg!=null&&recentGapAvg!=null)?(avg-recentGapAvg):0; // 正=直近間隔が短縮（出やすくなっている）
+   // 位置別トレンド
+   x.posTrend=x.pos.map((p,pi)=>{
+     const rec=x.posRecent30[pi], recRate=w30?rec/w30:0;
+     const olderCount=p-rec, olderRate=olderN?olderCount/olderN:0;
+     return (recRate-olderRate)*100;
+   });
+   x.avgGap=avg;x.maxGap=maxGap;x.currentGap=gap;x.trend=trend;x.gapTrend=gapTrend;
+   x.sigma=0; // 後で設定
+   const gapTrendNorm=Math.max(0,Math.min(1,(gapTrend+5)/10));
+   x.score=100*(.25*(x.count/maxCount)+.20*r10+.15*Math.max(0,Math.min(1,(trend+10)/20))+.10*gapScore+.15*posMax+.15*gapTrendNorm);
+ });
+ const expectedCount=n*0.4, sdCount=0.6*Math.sqrt(n);
+ digits.forEach(x=>{x.sigma=sdCount?(x.count-expectedCount)/sdCount:0;});
+ const shapeMom=categoryMomentum(a,shapeName,SHAPE_ORDER);
+ const parityMom=categoryMomentum(a,parityLabel,PARITY_ORDER);
+ const hilowMom=categoryMomentum(a,hilowLabel,HILOW_ORDER);
+ const sumBucketMom=categoryMomentum(a,sumBucketLabel,SUM_BUCKET_LABELS);
+ const chi2=chiSquareDigits(digits,n);
+ const chi2Recent=chiSquareRecent(a,Math.min(100,n));
+ const result={digits,pairMom,posRate,shapeMom,parityMom,hilowMom,sumBucketMom,chi2,chi2Recent,expectedCount,sdCount};
+ precomputeFactors(result,n);
+ return result;
+}
+// ==== 候補算出用：各分析項目を「理論値=1.0とした倍率」に変換して事前計算 ====
+function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v))}
+function precomputeFactors(st,n){
+ const w30=Math.min(30,n), olderN=Math.max(1,n-w30);
+ // 桁×位置 の倍率テーブル（10桁 × 4位置）
+ st.digitFactor=st.digits.map(x=>{
+   const digitRatio=st.expectedCount?x.count/st.expectedCount:1; // 項目1：出現頻度
+   const expRecentPerDigit=w30*0.4;
+   const recentRatio=expRecentPerDigit?x.recent30/expRecentPerDigit:1; // 項目2：ホット・コールド
+   const gapRatio=1+clamp(x.gapTrend/20,-0.15,0.15); // 項目4：間隔の直近傾向
+   return x.pos.map((p,pi)=>{
+     const posRatio=1+clamp(x.posTrend[pi]/40,-0.25,0.25); // 桁別トレンド
+     return Math.pow(digitRatio,0.35)*Math.pow(recentRatio,0.30)*Math.pow(gapRatio,0.15)*Math.pow(posRatio,0.20);
+   });
+ });
+ // ペアの倍率テーブル
+ st.pairFactor={};
+ Object.entries(st.pairMom).forEach(([k,v])=>{
+   st.pairFactor[k]=1+clamp(v.trend/40,-0.2,0.2);
+ });
+ // 奇偶・大小・合計値レンジの倍率テーブル
+ const toFactorMap=(mom)=>{const m={};Object.entries(mom).forEach(([k,v])=>{m[k]=1+clamp(v.trend/40,-0.2,0.2)});return m;};
+ st.parityFactor=toFactorMap(st.parityMom);
+ st.hilowFactor=toFactorMap(st.hilowMom);
+ st.sumBucketFactor=toFactorMap(st.sumBucketMom);
+ // 重複形状の倍率（形状「内」の順位づけには使わないが、参考表示用に保持）
+ st.shapeFactor=toFactorMap(st.shapeMom);
+}
+function pairFactorForCandidate(s){
+ const u=[...new Set(s)].sort();
+ let logSum=0,cnt=0;
+ for(let i=0;i<u.length;i++)for(let j=i+1;j<u.length;j++){
+   const k=u[i]+u[j];
+   const f=stats.pairFactor[k];
+   if(f){logSum+=Math.log(f);cnt++;}
+ }
+ return cnt?Math.exp(logSum/cnt):1;
+}
+function compositeMultiplier(s){
+ let logSum=0;
+ for(let p=0;p<4;p++){ logSum+=Math.log(stats.digitFactor[+s[p]][p]); }
+ const digitPart=Math.exp(logSum/4); // 項目1・2・4・桁別：4位置の相乗平均
+ const pairPart=pairFactorForCandidate(s); // 項目5(組み合わせ)
+ const pt=stats.parityFactor[parityLabel(s)]||1;   // 奇偶バランス
+ const ht=stats.hilowFactor[hilowLabel(s)]||1;      // 大小バランス
+ const sb=stats.sumBucketFactor[sumBucketLabel(s)]||1; // 合計値レンジ
+ const patternPart=Math.pow(pt*ht*sb,1/3);
+ // 重み：桁の勢い0.5、ペアの勢い0.25、奇偶/大小/合計の勢い0.25
+ return Math.pow(digitPart,0.5)*Math.pow(pairPart,0.25)*Math.pow(patternPart,0.25);
+}
+// 候補数Nを、重複形状の理論比率×直近トレンド倍率に応じて配分（最大剰余法）
+function allocateQuota(N){
+ const rawShare=SHAPE_ORDER.map(name=>(THEORY_SHAPE[name]/100)*(stats.shapeFactor[name]||1));
+ const totalShare=rawShare.reduce((a,b)=>a+b,0)||1;
+ const raw=rawShare.map(v=>N*v/totalShare);
+ const floor=raw.map(Math.floor);
+ let allocated=floor.reduce((a,b)=>a+b,0);
+ let remainder=N-allocated;
+ const order=raw.map((v,i)=>({i,frac:v-floor[i]})).sort((a,b)=>b.frac-a.frac);
+ const quota=floor.slice();
+ for(let k=0;k<remainder && order.length;k++){quota[order[k%order.length].i]++;}
+ return quota;
+}
+function buildCandidateUniverse(){
+ const buckets={}; SHAPE_ORDER.forEach(name=>buckets[name]=[]);
+ for(let num=0;num<10000;num++){
+   const s=String(num).padStart(4,'0');
+   const shape=shapeName(s);
+   buckets[shape].push({s,mult:compositeMultiplier(s)});
+ }
+ SHAPE_ORDER.forEach(name=>buckets[name].sort((a,b)=>b.mult-a.mult));
+ return buckets;
+}
+function chiSquareDigits(digits,n){
+ const expected=n*4/10;
+ let chi2=0;
+ digits.forEach(x=>{chi2+=Math.pow(x.count-expected,2)/expected});
+ return {value:chi2,df:9,expected,n};
+}
+function chiSquareRecent(a,windowN){
+ const recent=a.slice(-windowN);
+ const cnt=Array(10).fill(0);
+ recent.forEach(s=>[...s].forEach(c=>cnt[+c]++));
+ const expected=windowN*4/10;
+ let chi2=0; cnt.forEach(c=>chi2+=Math.pow(c-expected,2)/expected);
+ return {value:chi2,df:9,expected,n:windowN};
+}
+function pairMomentum(a){
+ const n=a.length;
+ const st={};
+ a.forEach((s,i)=>{
+   const u=[...new Set(s)].sort((x,y)=>x-y);
+   for(let x=0;x<u.length;x++)for(let y=x+1;y<u.length;y++){
+     const k=u[x]+u[y];
+     if(!st[k])st[k]={count:0,recent10:0,recent30:0,recent50:0};
+     st[k].count++;
+     if(i>=n-10)st[k].recent10++;
+     if(i>=n-30)st[k].recent30++;
+     if(i>=n-50)st[k].recent50++;
+   }
+ });
+ const w30=Math.min(30,n), olderN=Math.max(1,n-w30);
+ Object.keys(st).forEach(k=>{
+   const x=st[k];
+   x.rate=x.count/n;
+   x.rate30=w30?x.recent30/w30:0;
+   const olderCount=x.count-x.recent30;
+   x.olderRate=olderN?olderCount/olderN:0;
+   x.trend=(x.rate30-x.olderRate)*100;
+ });
+ return st;
+}
+function categoryMomentum(a,getKey,orderedKeys){
+ const n=a.length;
+ const st={}; orderedKeys.forEach(k=>st[k]={count:0,recent10:0,recent30:0,recent50:0});
+ a.forEach((s,i)=>{
+   const k=getKey(s);
+   if(!st[k])st[k]={count:0,recent10:0,recent30:0,recent50:0};
+   st[k].count++;
+   if(i>=n-10)st[k].recent10++;
+   if(i>=n-30)st[k].recent30++;
+   if(i>=n-50)st[k].recent50++;
+ });
+ const w30=Math.min(30,n), w10=Math.min(10,n), w50=Math.min(50,n);
+ const olderN=Math.max(1,n-w30);
+ Object.keys(st).forEach(k=>{
+   const x=st[k];
+   x.rate=n?x.count/n:0;
+   x.rate10=w10?x.recent10/w10:0;
+   x.rate30=w30?x.recent30/w30:0;
+   x.rate50=w50?x.recent50/w50:0;
+   const olderCount=x.count-x.recent30;
+   x.olderRate=olderN?olderCount/olderN:0;
+   x.trend=(x.rate30-x.olderRate)*100;
+ });
+ return st;
+}
+function trendCell(t){
+ const cls=t>1?'good':(t<-1?'bad':'flat');
+ const arrow=t>1?'▲':(t<-1?'▼':'―');
+ return `<span class="${cls}">${arrow} ${t>=0?'+':''}${t.toFixed(1)}pt</span>`;
+}
+function sigmaBadge(sigma){
+ const abs=Math.abs(sigma);
+ const cls=abs<1?'s0':(abs<2?'s1':'s2');
+ return `<span class="sigma ${cls}">${sigma>=0?'+':''}${sigma.toFixed(1)}σ</span>`;
+}
+function renderAll(){
+ const d=stats.digits,n=draws.length;
+ document.getElementById('kpis').innerHTML=[
+  ['分析回数',n+'回'],['最頻出数字',d.slice().sort((a,b)=>b.count-a.count)[0].d],['勢い1位',d.slice().sort((a,b)=>b.score-a.score)[0].d],['直近10回の最多',d.slice().sort((a,b)=>b.recent10-a.recent10)[0].d]
+ ].map(x=>`<div class="kpi"><span>${x[0]}</span><b>${x[1]}</b></div>`).join('');
+
+ // 1. 桁ごとの出現頻度分析
+ const sorted=d.slice().sort((a,b)=>b.score-a.score);
+ document.getElementById('digitTable').innerHTML='<tr><th>順位</th><th>数字</th><th>総合スコア</th><th>出現回数</th><th>期待値</th><th>乖離(σ)</th><th>直近10</th><th>直近30</th><th>トレンド</th></tr>'+
+ sorted.map((x,i)=>`<tr><td>${i+1}</td><td><b>${x.d}</b></td><td><b>${x.score.toFixed(1)}</b></td><td>${x.count}</td><td>${stats.expectedCount.toFixed(1)}</td><td>${sigmaBadge(x.sigma)}</td><td>${x.recent10}</td><td>${x.recent30}</td><td class="${x.trend>=0?'good':'bad'}">${x.trend>=0?'+':''}${x.trend.toFixed(1)}</td></tr>`).join('');
+
+ // 2. ホット・コールド
+ const byRecent30Desc=d.slice().sort((a,b)=>b.recent30-a.recent30 || b.recent10-a.recent10);
+ const byRecent30Asc=d.slice().sort((a,b)=>a.recent30-b.recent30 || b.currentGap-a.currentGap);
+ document.getElementById('hotList').innerHTML=byRecent30Desc.slice(0,4).map(x=>`<span class="chip">${x.d} <span style="color:var(--ink-faint)">直近30回:${x.recent30}回</span></span>`).join('');
+ document.getElementById('coldList').innerHTML=byRecent30Asc.slice(0,4).map(x=>`<span class="chip">${x.d} <span style="color:var(--ink-faint)">直近30回:${x.recent30}回・${x.currentGap}回出ず</span></span>`).join('');
+
+ try{renderTrend()}catch(e){console.error('renderTrend failed:',e)}
+
+ // 桁別分析（位置ごと・トレンド付き）
+ const heads=['数字','千の位','百の位','十の位','一の位','最強位置'];
+ document.getElementById('posTable').innerHTML='<tr>'+heads.map(h=>`<th>${h}</th>`).join('')+'</tr>'+d.map(x=>`<tr><td><b>${x.d}</b></td>${x.pos.map((v,pi)=>`<td>${(v/n*100).toFixed(1)}% ${trendCell(x.posTrend[pi])}</td>`).join('')}<td>${['千','百','十','一'][x.pos.indexOf(Math.max(...x.pos))]}</td></tr>`).join('');
+
+ // 組み合わせ（ペアにトレンド追加）
+ const pairs=Object.entries(stats.pairMom).sort((a,b)=>b[1].count-a[1].count).slice(0,12);
+ document.getElementById('pairs').innerHTML=pairs.map(([k,v])=>`<span class="chip">${k} (${v.count}) ${trendCell(v.trend)}</span>`).join('');
+ const last=draws[n-1], carry=Array.from(new Set([...last])).map(Number).sort((a,b)=>b-a);
+ document.getElementById('carry').innerHTML=carry.map(x=>`<span class="chip">${x}</span>`).join('')||'<span class="muted">なし</span>';
+ const adj=[...new Set([...last].map(Number).flatMap(x=>[x,(x+1)%10,(x+9)%10]))].sort((a,b)=>a-b);
+ document.getElementById('adjacent').innerHTML=adj.map(x=>`<span class="chip">${x}</span>`).join('');
+
+ // 3. 重複形状（理論値比較）
+ const shapes={};
+ draws.forEach(s=>{const name=shapeName(s); shapes[name]=(shapes[name]||0)+1});
+ document.getElementById('patternTable').innerHTML='<tr><th>形状</th><th>実測回数</th><th>実測割合</th><th>理論値</th><th>差</th><th>直近30</th><th>トレンド</th></tr>'+
+  SHAPE_ORDER.map(name=>{
+    const cnt=shapes[name]||0, pct=cnt/n*100, theo=THEORY_SHAPE[name], diff=pct-theo;
+    const mom=stats.shapeMom[name]||{recent30:0,rate30:0,trend:0};
+    return `<tr><td>${name}</td><td>${cnt}</td><td>${pct.toFixed(1)}%</td><td>${theo.toFixed(2)}%</td><td class="${Math.abs(diff)<3?'flat':(diff>0?'good':'bad')}">${diff>=0?'+':''}${diff.toFixed(1)}pt</td><td>${mom.recent30}回 (${(mom.rate30*100).toFixed(0)}%)</td><td>${trendCell(mom.trend)}</td></tr>`;
+  }).join('');
+
+ // 3. 数字合計分布
+ const sums=draws.map(sumOf);
+ const avg=sums.reduce((a,b)=>a+b,0)/n;
+ const variance=sums.reduce((a,b)=>a+Math.pow(b-avg,2),0)/n;
+ const sd=Math.sqrt(variance);
+ const recent30Sums=sums.slice(-Math.min(30,n));
+ const recentAvg=recent30Sums.reduce((a,b)=>a+b,0)/recent30Sums.length;
+ document.getElementById('sumKpis').innerHTML=[
+   ['実測平均',avg.toFixed(2)],['理論平均','18.00'],['標準偏差',sd.toFixed(2)],['理論SD','5.74'],['直近30回平均',recentAvg.toFixed(1)]
+ ].map(x=>`<div class="kpi"><span>${x[0]}</span><b style="font-size:18px">${x[1]}</b></div>`).join('');
+ try{renderSumChart(sums)}catch(e){console.error('renderSumChart failed:',e)}
+
+ // 合計値バケットの勢い分析
+ renderCategoryMomentumWithTheory('sumBucketMomentumTable',stats.sumBucketMom,'合計値レンジ',THEORY_SUMBUCKET);
+
+ // 3. 奇偶バランス
+ renderCategoryMomentumWithTheory('parityMomentumTable',stats.parityMom,'パターン',THEORY_PARITY);
+ // 3. 大小バランス
+ renderCategoryMomentumWithTheory('hilowMomentumTable',stats.hilowMom,'パターン',THEORY_HILOW);
+
+ // 4. ギャップ分析（直近傾向つき）
+ document.getElementById('gapTable').innerHTML='<tr><th>数字</th><th>出現回数</th><th>現在の空き</th><th>平均間隔</th><th>最大間隔</th><th>理論平均間隔</th><th>直近間隔の傾向</th></tr>'+
+  d.slice().sort((a,b)=>b.currentGap-a.currentGap).map(x=>{
+    const gtCls=x.gapTrend>1?'good':(x.gapTrend<-1?'bad':'flat');
+    const gtArrow=x.gapTrend>1?'短縮▲':(x.gapTrend<-1?'長期化▼':'横ばい―');
+    return `<tr><td><b>${x.d}</b></td><td>${x.count}</td><td class="${x.currentGap>=6?'bad':(x.currentGap>=4?'flat':'good')}">${x.currentGap}</td><td>${x.avgGap?x.avgGap.toFixed(1):'-'}</td><td>${x.maxGap??'-'}</td><td>2.91</td><td class="${gtCls}">${gtArrow} (${x.gapTrend>=0?'+':''}${x.gapTrend.toFixed(1)})</td></tr>`;
+  }).join('');
+
+ // 5. カイ二乗検定（全体＋直近）
+ renderChiSquare();
+
+ generateCandidates();
+}
+function renderCategoryMomentumWithTheory(elId,mom,label,theory){
+ const rows=Object.entries(mom).sort((a,b)=>b[1].count-a[1].count);
+ document.getElementById(elId).innerHTML=
+  `<tr><th>${label}</th><th>実測</th><th>実測割合</th><th>理論値</th><th>差</th><th>直近30</th><th>トレンド</th></tr>`+
+  rows.map(([k,x])=>{
+    const theo=theory[k], pct=x.rate*100, diff=theo!==undefined?pct-theo:null;
+    const hotcold = x.trend>3 ? '<span class="tag hot">直近増加</span>' : (x.trend<-3 ? '<span class="tag cold">直近減少</span>' : '');
+    return `<tr><td>${k}${hotcold}</td><td>${x.count}</td><td>${pct.toFixed(1)}%</td><td>${theo!==undefined?theo.toFixed(2)+'%':'-'}</td><td class="${diff===null?'flat':(Math.abs(diff)<3?'flat':(diff>0?'good':'bad'))}">${diff===null?'-':(diff>=0?'+':'')+diff.toFixed(1)+'pt'}</td><td>${x.recent30}回 (${(x.rate30*100).toFixed(0)}%)</td><td>${trendCell(x.trend)}</td></tr>`;
+  }).join('');
+}
+function renderSumChart(sums){
+ const c=document.getElementById('sumChart'); if(!c)return;
+ const ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);
+ const counts=Array(37).fill(0);
+ sums.forEach(s=>counts[s]++);
+ const maxC=Math.max(...counts,1);
+ const padL=35,padB=24,padT=14;
+ const bw=(w-padL-10)/37;
+ ctx.fillStyle='#2dd4bf';
+ counts.forEach((c2,i)=>{
+   const bh=(h-padB-padT)*(c2/maxC);
+   ctx.fillRect(padL+i*bw+1,h-padB-bh,bw-2,bh);
+ });
+ ctx.strokeStyle='#232f4d';ctx.beginPath();ctx.moveTo(padL,h-padB);ctx.lineTo(w-5,h-padB);ctx.stroke();
+ ctx.fillStyle='#8b97b8';ctx.font='10px monospace';
+ for(let s=0;s<=36;s+=6){ctx.fillText(String(s),padL+s*bw,h-8);}
+ ctx.fillText('合計値ごとの出現回数（0〜36）',padL,12);
+}
+function renderChiSquare(){
+ const chi2=stats.chi2, chi2r=stats.chi2Recent, el=document.getElementById('chiSquareBoxes');
+ function verdictOf(v){
+   if(v>=CHI_CRIT['1%'])return ['1%水準で有意な偏り','bad'];
+   if(v>=CHI_CRIT['5%'])return ['5%水準で有意な偏り','flat'];
+   return ['有意な偏りなし（健全）','good'];
+ }
+ const [vtext,vcls]=verdictOf(chi2.value);
+ const [vtextR,vclsR]=verdictOf(chi2r.value);
+ el.innerHTML=`
+  <div class="kpi"><span>χ²（全${chi2.n}回）</span><b>${chi2.value.toFixed(2)}</b></div>
+  <div class="kpi"><span>χ²（直近${chi2r.n}回）</span><b>${chi2r.value.toFixed(2)}</b></div>
+  <div class="kpi"><span>自由度 df</span><b>9</b></div>
+  <div class="kpi" style="grid-column:1/-1"><span>臨界値</span><b style="font-size:14px;font-weight:600">10%: 14.68　／　5%: 16.92　／　1%: 21.67　／　0.1%: 27.88</b></div>
+  <div class="kpi ${vcls}" style="grid-column:1/-1"><span>判定（全期間）</span><b style="font-size:14px;font-weight:600">${vtext}</b></div>
+  <div class="kpi ${vclsR}" style="grid-column:1/-1"><span>判定（直近${chi2r.n}回）</span><b style="font-size:14px;font-weight:600">${vtextR}</b></div>
+  <div class="kpi" style="grid-column:1/-1"><span>候補算出への反映について</span><b style="font-size:12.5px;font-weight:500;color:var(--ink-dim)">カイ二乗検定は「機械全体の公平性」を見る診断であり、特定の数字やパターンを支持する情報ではないため、次回候補のスコアには使っていません。</b></div>
+ `;
+}
+function renderTrend(){
+ const c=document.getElementById('trendChart'),ctx=c.getContext('2d'),w=c.width,h=c.height;ctx.clearRect(0,0,w,h);
+ const colors=['#5b8def','#fb7185','#2dd4bf','#f0b429','#a78bfa','#22d3ee','#f472b6','#a3e635','#fb923c','#94a3b8'];
+ const step=Math.max(1,Math.floor(draws.length/20));
+ ctx.font='11px monospace';ctx.strokeStyle='#232f4d';
+ for(let y=0;y<=4;y++){let yy=20+y*(h-50)/4;ctx.beginPath();ctx.moveTo(35,yy);ctx.lineTo(w-10,yy);ctx.stroke();}
+ stats.digits.forEach((x,d)=>{
+   ctx.strokeStyle=colors[d];ctx.lineWidth=2;ctx.beginPath();
+   for(let i=step;i<=draws.length;i+=step){const start=Math.max(0,i-step),rate=draws.slice(start,i).filter(s=>s.includes(String(d))).length/Math.max(1,i-start);const px=35+(i/draws.length)*(w-45),py=20+(1-rate/1)* (h-50);if(i===step)ctx.moveTo(px,py);else ctx.lineTo(px,py);}
+   ctx.stroke();
+ });
+ ctx.fillStyle='#8b97b8';ctx.fillText('各数字の出現率（移動ブロック）',35,h-10);
+}
+function generateCandidates(){
+ if(!stats)return;
+ const N=+document.getElementById('candidateN').value;
+ const quota=allocateQuota(N);
+ const buckets=buildCandidateUniverse();
+ let finalList=[];
+ SHAPE_ORDER.forEach((name,i)=>{
+   finalList=finalList.concat(buckets[name].slice(0,quota[i]).map(x=>({...x,shape:name})));
+ });
+ finalList.sort((a,b)=>b.mult-a.mult);
+ document.getElementById('candidateTable').innerHTML='<tr><th>順位</th><th>候補</th><th>形状</th><th>合計</th><th>勢い倍率</th></tr>'+
+ finalList.map((x,i)=>{
+   const pct=(x.mult-1)*100;
+   const cls=pct>1?'good':(pct<-1?'bad':'flat');
+   return `<tr><td>${i+1}</td><td><span class="candidate-big">${x.s}</span></td><td>${x.shape}</td><td>${sumOf(x.s)}</td><td class="${cls}">${x.mult.toFixed(3)}倍 (${pct>=0?'+':''}${pct.toFixed(1)}%)</td></tr>`;
+ }).join('');
+ const quotaText=SHAPE_ORDER.map((name,i)=>{
+   const fac=stats.shapeFactor[name]||1;
+   const tag=fac>1.01?' 直近増加で加重':(fac<0.99?' 直近減少で減重':'');
+   return `${name}:${quota[i]}件(理論${THEORY_SHAPE[name].toFixed(1)}%${tag})`;
+ }).join('　');
+ const qEl=document.getElementById('candidateQuotaInfo');
+ if(qEl)qEl.textContent=`形状の内訳（理論比率×形状の直近トレンドで配分）： ${quotaText}`;
+}
+function backtest(){
+ if(draws.length<30){alert('バックテストには30回以上必要です。');return}
+ const N=+document.getElementById('btN').value;
+ let total=0, exact=0, straight=0, one=0,two=0;
+ const start=Math.max(10,draws.length-50);
+ const old=draws;
+ for(let t=start;t<old.length;t++){
+   const train=old.slice(Math.max(0,t-100),t); draws=train;stats=makeStats(train);
+   const quota=allocateQuota(N);
+   const buckets=buildCandidateUniverse();
+   let cand=[];
+   SHAPE_ORDER.forEach((name,i)=>{cand=cand.concat(buckets[name].slice(0,quota[i]).map(x=>x.s));});
+   const actual=old[t];
+   total++; if(cand.includes(actual))exact++;
+   const hits=[...new Set(actual)].filter(x=>cand.some(s=>s.includes(x))).length;
+   if(hits>=1)one++;if(hits>=2)two++;
+   if(cand.some(s=>[...s].every((x,i)=>x===actual[i])))straight++;
+ }
+ draws=old;stats=makeStats(old);renderAll();
+ document.getElementById('btResult').innerHTML=`<div class="kpis">
+ <div class="kpi"><span>検証回数</span><b>${total}</b></div>
+ <div class="kpi"><span>候補内に当選番号</span><b>${exact}</b><span>${(exact/total*100).toFixed(1)}%</span></div>
+ <div class="kpi"><span>1数字以上を含む候補あり</span><b>${one}</b><span>${(one/total*100).toFixed(1)}%</span></div>
+ <div class="kpi"><span>2数字以上を含む候補あり</span><b>${two}</b><span>${(two/total*100).toFixed(1)}%</span></div>
+ </div>`;
+}
+function loadEmbedded(){
+ document.getElementById('data').value=EMBEDDED_DRAWS.join('\n');
+ document.getElementById('orderMode').value='as-is';
+ document.getElementById('periodInfo').textContent=`対象期間：${EMBEDDED_ROUNDS[0]}（${EMBEDDED_DATES[0]}）〜 ${EMBEDDED_ROUNDS[EMBEDDED_ROUNDS.length-1]}（${EMBEDDED_DATES[EMBEDDED_DATES.length-1]}）　全${EMBEDDED_DRAWS.length}回`;
+ analyze();
+}
+function clearAll(){document.getElementById('data').value='';document.getElementById('results').style.display='none';document.getElementById('status').textContent='';}
+window.addEventListener("DOMContentLoaded",loadEmbedded);
+</script>
+
+</body>
+</html>
