@@ -287,8 +287,15 @@ def get_rss_url(cfg, state):
 
 def fetch_rss_latest(rss_url):
     # XML は宣言された文字コードで解析させるためバイト列のまま渡す
-    body, _ = http_get_bytes(rss_url)
-    root = ET.fromstring(body)
+    body, charset = http_get_bytes(rss_url)
+    try:
+        root = ET.fromstring(body)
+    except ValueError:
+        # Shift_JIS など expat が扱えない文字コードの場合は自前でデコードする
+        m = re.match(rb'<\?xml[^>]*encoding=["\']([\w.-]+)', body)
+        enc = (m.group(1).decode() if m else None) or charset or "utf-8"
+        text = re.sub(r"^<\?xml[^>]*\?>", "", body.decode(enc, errors="replace"))
+        root = ET.fromstring(text)
     items = []
     for item in root.iter("item"):
         title = (item.findtext("title") or "").strip()
