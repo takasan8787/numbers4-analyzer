@@ -1,13 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-Hánna Podcast 自動更新スクリプト
+Hánna Podcast 自動更新スクリプト (Spotify Web API 不要版)
 
-1. Spotify API (Client Credentials) でアクセストークンを取得
-2. 番組の最新エピソードを取得
+1. Spotify の公開埋め込みページ (open.spotify.com/embed/show/{番組ID}) から
+   エピソード一覧 (エピソードID・タイトル・公開日) を取得
+   - 取得できなければ番組ページ (open.spotify.com/show/{番組ID}) から取得
+2. RSS フィードの最新エピソードのタイトルと照合し、最新エピソードIDを決定
+   - RSS URL は config で指定、空欄なら Spotify oEmbed で番組名を取得し
+     iTunes Search API (無料・認証不要) で自動検索してキャッシュ
+   - RSS が使えない場合は Spotify 側の情報だけで最新を判定
 3. ローカルの podcast.html の最初の podcast-grid ブロックの直前に挿入
    (同じエピソードIDが既にあればスキップ)
 4. ローカルファイルを上書き保存 (バックアップ付き)
 5. FTPS でサーバーにアップロード
+
+※ RSS には Spotify のエピソードIDが含まれないため、ID は必ず Spotify の
+  公開ページから取得し、RSS は「どれが最新か」の確認に使います。
 
 標準ライブラリのみで動作します (pip install 不要)。
 
@@ -19,8 +27,9 @@ Hánna Podcast 自動更新スクリプト
 """
 
 import argparse
-import base64
+import email.utils
 import ftplib
+import html as html_lib
 import json
 import logging
 import os
@@ -28,17 +37,22 @@ import re
 import shutil
 import ssl
 import sys
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime
+import xml.etree.ElementTree as ET
+from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 DEFAULT_CONFIG = os.path.join(SCRIPT_DIR, "config.json")
+STATE_FILE = "state.json"  # 自動検索した RSS URL のキャッシュ
 
-SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token"
-SPOTIFY_API_BASE = "https://api.spotify.com/v1"
+USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+)
 
 EPISODE_BLOCK_TEMPLATE = """<div class="podcast-grid stagger">
   <div class="podcast-card">
@@ -51,6 +65,10 @@ EPISODE_BLOCK_TEMPLATE = """<div class="podcast-grid stagger">
 FIRST_GRID_RE = re.compile(
     r'^(?P<indent>[ \t]*)<div\s+class="[^"]*\bpodcast-grid\b[^"]*"', re.MULTILINE
 )
+EPISODE_ID = r"[0-9A-Za-z]{22}"
+NEXT_DATA_RE = re.compile(
+    r'<script[^>]*id="__NEXT_DATA__"[^>]*>(.*?)</script>', re.DOTALL
+)
 
 log = logging.getLogger("podcast_updater")
 
@@ -60,7 +78,7 @@ def load_config(path):
     with open(path, "r", encoding="utf-8") as f:
         cfg = json.load(f)
     required = {
-        "spotify": ["client_id", "client_secret", "show_id"],
+        "spotify": ["show_id"],
         "local": ["html_path"],
         "ftp": ["host", "user", "password", "remote_path"],
     }
@@ -93,44 +111,221 @@ def setup_logging(cfg):
     return log_file
 
 
-# ---------------------------------------------------------------- Spotify
-def http_request(url, data=None, headers=None, timeout=30):
-    req = urllib.request.Request(url, data=data, headers=headers or {})
+def load_state():
+    path = os.path.join(SCRIPT_DIR, STATE_FILE)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def save_state(state):
+    path = os.path.join(SCRIPT_DIR, STATE_FILE)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+
+# ---------------------------------------------------------------- HTTP
+def http_get_bytes(url, timeout=30):
+    req = urllib.request.Request(url, headers={
+        "User-Agent": USER_AGENT,
+        "Accept-Language": "ja,en;q=0.8",
+    })
     try:
         with urllib.request.urlopen(req, timeout=timeout) as res:
-            return json.loads(res.read().decode("utf-8"))
+            return res.read(), res.headers.get_content_charset()
     except urllib.error.HTTPError as e:
-        body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(f"HTTP {e.code} {url}: {body}") from e
+        raise RuntimeError(f"HTTP {e.code} {url}") from e
 
 
-def get_access_token(client_id, client_secret):
-    credentials = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
-    data = urllib.parse.urlencode({"grant_type": "client_credentials"}).encode()
-    res = http_request(
-        SPOTIFY_TOKEN_URL,
-        data=data,
-        headers={
-            "Authorization": f"Basic {credentials}",
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
+def http_get(url, timeout=30):
+    body, charset = http_get_bytes(url, timeout)
+    return body.decode(charset or "utf-8", errors="replace")
+
+
+def http_get_json(url):
+    return json.loads(http_get(url))
+
+
+# ---------------------------------------------------------------- 日付・タイトル
+def parse_date(value):
+    """いろいろな形式の日付を UTC の datetime にする。解釈できなければ None。"""
+    if isinstance(value, dict):
+        value = value.get("isoString") or value.get("iso") or value.get("date")
+    if isinstance(value, (int, float)):
+        # ミリ秒 / 秒の UNIX 時刻
+        ts = value / 1000 if value > 10**11 else value
+        return datetime.fromtimestamp(ts, tz=timezone.utc)
+    if not isinstance(value, str) or not value.strip():
+        return None
+    s = value.strip()
+    try:
+        d = datetime.fromisoformat(s.replace("Z", "+00:00"))
+    except ValueError:
+        try:
+            d = email.utils.parsedate_to_datetime(s)  # RSS の pubDate 形式
+        except (TypeError, ValueError):
+            return None
+    if d.tzinfo is None:
+        d = d.replace(tzinfo=timezone.utc)
+    return d.astimezone(timezone.utc)
+
+
+def normalize_title(title):
+    t = unicodedata.normalize("NFKC", html_lib.unescape(title or "")).lower()
+    return re.sub(r"[\s\W_]+", "", t)
+
+
+# ---------------------------------------------------------------- Spotify (認証不要)
+def _walk_episodes(node, found, order):
+    """__NEXT_DATA__ の JSON を再帰的にたどってエピソード情報を集める。"""
+    if isinstance(node, dict):
+        uri = node.get("uri") or ""
+        m = re.fullmatch(r"spotify:episode:(" + EPISODE_ID + ")", uri) if isinstance(uri, str) else None
+        if m:
+            ep_id = m.group(1)
+            ep = found.setdefault(ep_id, {"id": ep_id, "title": "", "date": None, "order": len(order)})
+            if ep_id not in order:
+                order.append(ep_id)
+            title = node.get("title") or node.get("name")
+            if isinstance(title, str) and not ep["title"]:
+                ep["title"] = title
+            for key in ("releaseDate", "release_date", "publishDate", "date"):
+                d = parse_date(node.get(key))
+                if d and not ep["date"]:
+                    ep["date"] = d
+        for v in node.values():
+            _walk_episodes(v, found, order)
+    elif isinstance(node, list):
+        for v in node:
+            _walk_episodes(v, found, order)
+
+
+def parse_spotify_page(page):
+    """Spotify の埋め込み/番組ページからエピソード一覧 (ページ上の順) を返す。"""
+    found, order = {}, []
+    m = NEXT_DATA_RE.search(page)
+    if m:
+        try:
+            _walk_episodes(json.loads(m.group(1)), found, order)
+        except ValueError:
+            log.warning("__NEXT_DATA__ の JSON を解析できませんでした")
+    if not found:
+        # JSON 構造が変わった場合の保険: ページ内のエピソードIDを出現順に拾う
+        pattern = r"(?:spotify:episode:|/episode/)(" + EPISODE_ID + ")"
+        for ep_id in re.findall(pattern, page):
+            if ep_id not in found:
+                found[ep_id] = {"id": ep_id, "title": "", "date": None, "order": len(order)}
+                order.append(ep_id)
+    return [found[i] for i in order]
+
+
+def fetch_spotify_episodes(show_id):
+    urls = [
+        f"https://open.spotify.com/embed/show/{show_id}",
+        f"https://open.spotify.com/show/{show_id}",
+    ]
+    last_error = None
+    for url in urls:
+        try:
+            episodes = parse_spotify_page(http_get(url))
+            if episodes:
+                log.info("Spotify ページから %d 件のエピソードを取得: %s", len(episodes), url)
+                return episodes
+            log.warning("エピソードが見つかりませんでした: %s", url)
+        except Exception as e:
+            last_error = e
+            log.warning("取得失敗: %s (%s)", url, e)
+    raise RuntimeError(f"Spotify からエピソードを取得できませんでした: {last_error}")
+
+
+def get_show_title(show_id):
+    url = "https://open.spotify.com/oembed?url=" + urllib.parse.quote(
+        f"https://open.spotify.com/show/{show_id}", safe=""
     )
-    token = res.get("access_token")
-    if not token:
-        raise RuntimeError(f"アクセストークンを取得できませんでした: {res}")
-    return token
+    return http_get_json(url).get("title", "")
 
 
-def get_latest_episode(token, show_id, market):
-    # Client Credentials では market 指定が必須 (未指定だと空になることがある)。
-    # 並び順に依存しないよう数件取得し、公開日が最新のものを選ぶ。
-    params = urllib.parse.urlencode({"market": market, "limit": 10})
-    url = f"{SPOTIFY_API_BASE}/shows/{show_id}/episodes?{params}"
-    res = http_request(url, headers={"Authorization": f"Bearer {token}"})
-    episodes = [e for e in res.get("items", []) if e and e.get("id")]
-    if not episodes:
-        raise RuntimeError("エピソードが1件も取得できませんでした (番組ID / market を確認してください)")
-    return max(episodes, key=lambda e: e.get("release_date") or "")
+# ---------------------------------------------------------------- RSS
+def discover_rss_url(show_id, country):
+    """oEmbed で番組名を取得し、iTunes Search API で RSS URL を探す。"""
+    title = get_show_title(show_id)
+    if not title:
+        raise RuntimeError("oEmbed から番組名を取得できませんでした")
+    log.info("番組名 (oEmbed): %s", title)
+    params = urllib.parse.urlencode({
+        "term": title, "media": "podcast", "entity": "podcast",
+        "country": country, "limit": 20,
+    })
+    results = http_get_json(f"https://itunes.apple.com/search?{params}").get("results", [])
+    candidates = [r for r in results if r.get("feedUrl")]
+    target = normalize_title(title)
+    for r in candidates:
+        if normalize_title(r.get("collectionName")) == target:
+            return r["feedUrl"]
+    raise RuntimeError(
+        f"iTunes で番組「{title}」の RSS が見つかりませんでした "
+        f"(候補: {[r.get('collectionName') for r in candidates[:5]]})"
+    )
+
+
+def get_rss_url(cfg, state):
+    rss_cfg = cfg.get("rss", {})
+    if rss_cfg.get("url"):
+        return rss_cfg["url"]
+    show_id = cfg["spotify"]["show_id"]
+    cached = state.get("rss_url", {})
+    if cached.get("show_id") == show_id and cached.get("url"):
+        return cached["url"]
+    url = discover_rss_url(show_id, rss_cfg.get("country", "JP"))
+    log.info("RSS URL を自動検出しました: %s", url)
+    state["rss_url"] = {"show_id": show_id, "url": url}
+    save_state(state)
+    return url
+
+
+def fetch_rss_latest(rss_url):
+    # XML は宣言された文字コードで解析させるためバイト列のまま渡す
+    body, _ = http_get_bytes(rss_url)
+    root = ET.fromstring(body)
+    items = []
+    for item in root.iter("item"):
+        title = (item.findtext("title") or "").strip()
+        date = parse_date(item.findtext("pubDate"))
+        if title:
+            items.append({"title": title, "date": date})
+    if not items:
+        raise RuntimeError("RSS にエピソードがありません")
+    dated = [i for i in items if i["date"]]
+    return max(dated, key=lambda i: i["date"]) if dated else items[0]
+
+
+# ---------------------------------------------------------------- 最新エピソード決定
+def pick_latest_episode(cfg):
+    episodes = fetch_spotify_episodes(cfg["spotify"]["show_id"])
+
+    # RSS の最新タイトルと照合できればそれを採用
+    if cfg.get("rss", {}).get("enabled", True):
+        try:
+            state = load_state()
+            latest = fetch_rss_latest(get_rss_url(cfg, state))
+            log.info("RSS 最新: %s (%s)", latest["title"], latest["date"])
+            key = normalize_title(latest["title"])
+            for ep in episodes:
+                if ep["title"] and normalize_title(ep["title"]) == key:
+                    log.info("RSS とタイトルが一致したエピソードを採用します")
+                    return ep
+            log.warning("RSS の最新タイトルと一致する Spotify エピソードがありません。"
+                        "Spotify 側の情報で判定します")
+        except Exception as e:
+            log.warning("RSS を利用できませんでした (Spotify 側の情報で判定します): %s", e)
+
+    # Spotify 側: 公開日があれば最新日付、無ければページ上の先頭 (新しい順に並んでいる)
+    dated = [e for e in episodes if e["date"]]
+    if dated:
+        return max(dated, key=lambda e: (e["date"], -e["order"]))
+    return episodes[0]
 
 
 # ---------------------------------------------------------------- HTML
@@ -230,18 +425,16 @@ def main():
     log.info("===== 実行開始 (ログ: %s) =====", log_file)
 
     try:
-        sp = cfg["spotify"]
         html_path = cfg["local"]["html_path"]
         backup_dir = cfg["local"].get("backup_dir") or os.path.join(SCRIPT_DIR, "backup")
+        if not os.path.isabs(backup_dir):
+            backup_dir = os.path.join(SCRIPT_DIR, backup_dir)
         keep = int(cfg["local"].get("backup_keep", 10))
 
-        token = get_access_token(sp["client_id"], sp["client_secret"])
-        log.info("Spotify アクセストークン取得 OK")
-
-        episode = get_latest_episode(token, sp["show_id"], sp.get("market", "JP"))
+        episode = pick_latest_episode(cfg)
         episode_id = episode["id"]
         log.info("最新エピソード: %s (%s) id=%s",
-                 episode.get("name"), episode.get("release_date"), episode_id)
+                 episode.get("title") or "(タイトル不明)", episode.get("date"), episode_id)
 
         if not os.path.isfile(html_path):
             raise FileNotFoundError(f"ローカルファイルが見つかりません: {html_path}")

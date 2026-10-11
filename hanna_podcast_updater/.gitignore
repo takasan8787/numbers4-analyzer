@@ -2,3 +2,4 @@ config.json
 logs/
 backup/
 __pycache__/
+state.json

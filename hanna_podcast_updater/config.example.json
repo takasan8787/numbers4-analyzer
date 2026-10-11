@@ -1,9 +1,11 @@
 {
   "spotify": {
-    "client_id": "YOUR_SPOTIFY_CLIENT_ID",
-    "client_secret": "YOUR_SPOTIFY_CLIENT_SECRET",
-    "show_id": "62V7Kvn177D5ZQKFY8JEYa",
-    "market": "JP"
+    "show_id": "62V7Kvn177D5ZQKFY8JEYa"
+  },
+  "rss": {
+    "enabled": true,
+    "url": "",
+    "country": "JP"
   },
   "local": {
     "html_path": "C:\\Users\\ascending\\Dropbox\\Hánna\\html\\hanna\\podcast.html",
