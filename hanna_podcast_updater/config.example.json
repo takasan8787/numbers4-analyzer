@@ -1,0 +1,26 @@
+{
+  "spotify": {
+    "client_id": "YOUR_SPOTIFY_CLIENT_ID",
+    "client_secret": "YOUR_SPOTIFY_CLIENT_SECRET",
+    "show_id": "62V7Kvn177D5ZQKFY8JEYa",
+    "market": "JP"
+  },
+  "local": {
+    "html_path": "C:\\Users\\貴之\\Dropbox\\Hánna\\html\\hanna\\podcast.html",
+    "backup_dir": "backup",
+    "backup_keep": 10
+  },
+  "ftp": {
+    "host": "sv16082.xserver.jp",
+    "port": 21,
+    "user": "YOUR_FTP_USER",
+    "password": "YOUR_FTP_PASSWORD",
+    "remote_path": "/lino-music.com/public_html/podcast.html",
+    "passive": true
+  },
+  "log": {
+    "dir": "logs",
+    "file": "podcast_updater.log",
+    "level": "INFO"
+  }
+}
